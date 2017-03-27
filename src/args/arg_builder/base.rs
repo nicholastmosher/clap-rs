@@ -1,3 +1,7 @@
+#[cfg(feature = "serde")]
+use serde;
+#[cfg(feature = "serde")]
+use serde::ser::SerializeStruct;
 
 use args::{ArgSettings, Arg, ArgFlags};
 
@@ -7,7 +11,7 @@ pub struct Base<'a, 'b>
 {
     pub name: &'a str,
     pub help: Option<&'b str>,
-    pub blacklist: Option<Vec<&'a str>>,
+    pub conflicts: Option<Vec<&'a str>>,
     pub settings: ArgFlags,
     pub r_unless: Option<Vec<&'a str>>,
     pub overrides: Option<Vec<&'a str>>,
@@ -30,5 +34,21 @@ impl<'n, 'e, 'z> From<&'z Arg<'n, 'e>> for Base<'n, 'e> {
 impl<'n, 'e> PartialEq for Base<'n, 'e> {
     fn eq(&self, other: &Base<'n, 'e>) -> bool {
         self.name == other.name
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a, 'b> serde::Serialize for Base<'a, 'b> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        let mut struc = try!(serializer.serialize_struct("Base", 8));
+        try!(struc.serialize_field("name", &self.name));
+        try!(struc.serialize_field("help", &self.help));
+        try!(struc.serialize_field("conflicts", &self.conflicts));
+        try!(struc.serialize_field("settings", &self.settings));
+        try!(struc.serialize_field("r_unless", &self.r_unless));
+        try!(struc.serialize_field("overrides", &self.overrides));
+        try!(struc.serialize_field("groups", &self.groups));
+        try!(struc.serialize_field("requires", &self.requires));
+        struc.end()
     }
 }

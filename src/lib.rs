@@ -544,6 +544,8 @@ extern crate term_size;
 extern crate unicode_segmentation;
 #[cfg(feature = "color")]
 extern crate atty;
+#[cfg(feature = "serde")]
+extern crate serde;
 
 #[cfg(feature = "yaml")]
 pub use yaml_rust::YamlLoader;

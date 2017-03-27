@@ -2,6 +2,12 @@
 use std::ascii::AsciiExt;
 use std::str::FromStr;
 
+// Third Party
+#[cfg(feature = "serde")]
+use serde;
+#[cfg(feature = "serde")]
+use serde::ser::SerializeSeq;
+
 bitflags! {
     flags Flags: u16 {
         const REQUIRED         = 1 << 0,
@@ -54,6 +60,47 @@ impl Default for ArgFlags {
     fn default() -> Self { ArgFlags(EMPTY_VALS | DELIM_NOT_SET) }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for ArgFlags {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        use ArgSettings::*;
+
+        // TODO: There's probably a better way to do this...
+        macro_rules! maybe_push {
+            ($s:ident, $v:ident) => {{
+                if self.is_set($s) { $v.push($s); }
+            }};
+        }
+        let mut v = vec![];
+
+        maybe_push!(AllowLeadingHyphen, v);
+        maybe_push!(Required, v);
+        maybe_push!(Multiple, v);
+        maybe_push!(Global, v);
+        maybe_push!(EmptyValues, v);
+        maybe_push!(Hidden, v);
+        maybe_push!(TakesValue, v);
+        maybe_push!(UseValueDelimiter, v);
+        maybe_push!(NextLineHelp, v);
+        maybe_push!(RequiredUnlessAll, v);
+        maybe_push!(RequireDelimiter, v);
+        maybe_push!(ValueDelimiterNotSet, v);
+        maybe_push!(HidePossibleValues, v);
+        maybe_push!(HideDefaultValue, v);
+        maybe_push!(RequireEquals, v);
+        maybe_push!(Last, v);
+
+        let mut seq = try!(serializer.serialize_seq(Some(v.len())));
+        for e in v {
+            try!(seq.serialize_element(&e));
+        }
+        seq.end()
+    }
+}
+
+
 /// Various settings that apply to arguments and may be set, unset, and checked via getter/setter
 /// methods [`Arg::set`], [`Arg::unset`], and [`Arg::is_set`]
 /// [`Arg::set`]: ./struct.Arg.html#method.set
@@ -61,36 +108,36 @@ impl Default for ArgFlags {
 /// [`Arg::is_set`]: ./struct.Arg.html#method.is_set
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ArgSettings {
-    /// The argument must be used
-    Required,
-    /// The argument may be used multiple times such as `--flag --flag`
-    Multiple,
+    /// Allows vals that start with a '-'
+    AllowLeadingHyphen,
     /// The argument allows empty values such as `--option ""`
     EmptyValues,
     /// The argument should be propagated down through all child [`SubCommands`]
     /// [`SubCommand`]: ./struct.SubCommand.html
     Global,
+    /// Hides the default value from the help string
+    HideDefaultValue,
+    /// Hides the possible values from the help string
+    HidePossibleValues,
     /// The argument should **not** be shown in help text
     Hidden,
-    /// The argument accepts a value, such as `--option <value>`
-    TakesValue,
-    /// Determines if the argument allows values to be grouped via a delimter
-    UseValueDelimiter,
+    /// Specifies that the arg is the last positional argument and may be accessed early via `--`
+    /// syntax
+    Last,
+    /// The argument may be used multiple times such as `--flag --flag`
+    Multiple,
     /// Prints the help text on the line after the argument
     NextLineHelp,
     /// Requires the use of a value delimiter for all multiple values
     RequireDelimiter,
-    /// Hides the possible values from the help string
-    HidePossibleValues,
-    /// Allows vals that start with a '-'
-    AllowLeadingHyphen,
     /// Require options use `--option=val` syntax
     RequireEquals,
-    /// Specifies that the arg is the last positional argument and may be accessed early via `--`
-    /// syntax
-    Last,
-    /// Hides the default value from the help string
-    HideDefaultValue,
+    /// The argument must be used
+    Required,
+    /// The argument accepts a value, such as `--option <value>`
+    TakesValue,
+    /// Determines if the argument allows values to be grouped via a delimter
+    UseValueDelimiter,
     #[doc(hidden)]
     RequiredUnlessAll,
     #[doc(hidden)]
@@ -121,6 +168,48 @@ impl FromStr for ArgSettings {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for ArgSettings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        use ArgSettings::*;
+        match *self {
+            AllowLeadingHyphen => {
+                serializer.serialize_unit_variant("ArgSettings", 1, "AllowLeadingHyphen")
+            }
+            EmptyValues => serializer.serialize_unit_variant("ArgSettings", 2, "EmptyValues"),
+            Global => serializer.serialize_unit_variant("ArgSettings", 3, "Global"),
+            HideDefaultValue => {
+                serializer.serialize_unit_variant("ArgSettings", 4, "HideDefaultValue")
+            }
+            HidePossibleValues => {
+                serializer.serialize_unit_variant("ArgSettings", 5, "HidePossibleValues")
+            }
+            Hidden => serializer.serialize_unit_variant("ArgSettings", 6, "Hidden"),
+            Last => serializer.serialize_unit_variant("ArgSettings", 7, "Last"),
+            Multiple => serializer.serialize_unit_variant("ArgSettings", 8, "Multiple"),
+            NextLineHelp => serializer.serialize_unit_variant("ArgSettings", 9, "NextLineHelp"),
+            RequireDelimiter => {
+                serializer.serialize_unit_variant("ArgSettings", 10, "RequireDelimiter")
+            }
+            RequireEquals => serializer.serialize_unit_variant("ArgSettings", 12, "RequireEquals"),
+            Required => serializer.serialize_unit_variant("ArgSettings", 13, "Required"),
+            TakesValue => serializer.serialize_unit_variant("ArgSettings", 14, "TakesValue"),
+            UseValueDelimiter => {
+                serializer.serialize_unit_variant("ArgSettings", 15, "UseValueDelimiter")
+            }
+            RequiredUnlessAll => {
+                serializer.serialize_unit_variant("ArgSettings", 16, "RequiredUnlessAll")
+            }
+            ValueDelimiterNotSet => {
+                serializer.serialize_unit_variant("ArgSettings", 17, "ValueDelimiterNotSet")
+            }
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
@@ -156,8 +245,7 @@ mod test {
                    ArgSettings::ValueDelimiterNotSet);
         assert_eq!("requireequals".parse::<ArgSettings>().unwrap(),
                    ArgSettings::RequireEquals);
-        assert_eq!("last".parse::<ArgSettings>().unwrap(),
-                   ArgSettings::Last);
+        assert_eq!("last".parse::<ArgSettings>().unwrap(), ArgSettings::Last);
         assert_eq!("hidedefaultvalue".parse::<ArgSettings>().unwrap(),
                    ArgSettings::HideDefaultValue);
         assert!("hahahaha".parse::<ArgSettings>().is_err());

@@ -26,6 +26,7 @@ term_size = { version = "0.2.3",  optional = true }
 yaml-rust = { version = "0.3.5",  optional = true }
 clippy    = { version = "~0.0.118", optional = true }
 atty      = { version = "0.2.2",  optional = true }
+serde     = { version = "0.9.11", optional = true }
 
 [dev-dependencies]
 regex = "0.2"

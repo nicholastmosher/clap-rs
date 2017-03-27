@@ -1,3 +1,8 @@
+#[cfg(feature = "serde")]
+use serde;
+#[cfg(feature = "serde")]
+use serde::ser::SerializeStruct;
+
 use std::rc::Rc;
 use std::ffi::{OsStr, OsString};
 
@@ -60,5 +65,24 @@ impl<'n, 'e, 'z> From<&'z Arg<'n, 'e>> for Valued<'n, 'e> {
             }
         }
         v
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a, 'b> serde::Serialize for Valued<'a, 'b> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        let mut struc = try!(serializer.serialize_struct("Valued", 11));
+        try!(struc.serialize_field("possible_vals", &self.possible_vals));
+        try!(struc.serialize_field("num_vals", &self.num_vals));
+        try!(struc.serialize_field("min_vals", &self.min_vals));
+        try!(struc.serialize_field("max_vals", &self.max_vals));
+        try!(struc.serialize_field("val_names", &self.val_names));
+        try!(struc.serialize_field("validator", &self.validator.is_some()));
+        try!(struc.serialize_field("validator_os", &self.validator_os.is_some()));
+        try!(struc.serialize_field("val_delim", &self.val_delim));
+        try!(struc.serialize_field("default_val", &self.default_val));
+        try!(struc.serialize_field("default_vals_ifs", &self.default_vals_ifs));
+        try!(struc.serialize_field("terminator", &self.terminator));
+        struc.end()
     }
 }

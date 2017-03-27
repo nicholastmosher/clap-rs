@@ -1,3 +1,7 @@
+#[cfg(feature = "serde")]
+use serde;
+#[cfg(feature = "serde")]
+use serde::ser::SerializeStruct;
 
 use Arg;
 
@@ -35,5 +39,18 @@ impl<'e> Clone for Switched<'e> {
             disp_ord: self.disp_ord,
             unified_ord: self.unified_ord,
         }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'b> serde::Serialize for Switched<'b> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        let mut struc = try!(serializer.serialize_struct("Switched", 5));
+        try!(struc.serialize_field("short", &self.short));
+        try!(struc.serialize_field("long", &self.long));
+        try!(struc.serialize_field("aliases", &self.aliases));
+        try!(struc.serialize_field("disp_ord", &self.disp_ord));
+        try!(struc.serialize_field("unified_ord", &self.unified_ord));
+        struc.end()
     }
 }

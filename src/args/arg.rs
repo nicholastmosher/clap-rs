@@ -1048,10 +1048,10 @@ impl<'a, 'b> Arg<'a, 'b> {
     /// assert_eq!(res.unwrap_err().kind, ErrorKind::ArgumentConflict);
     /// ```
     pub fn conflicts_with(mut self, name: &'a str) -> Self {
-        if let Some(ref mut vec) = self.b.blacklist {
+        if let Some(ref mut vec) = self.b.conflicts {
             vec.push(name);
         } else {
-            self.b.blacklist = Some(vec![name]);
+            self.b.conflicts = Some(vec![name]);
         }
         self
     }
@@ -1098,12 +1098,12 @@ impl<'a, 'b> Arg<'a, 'b> {
     /// ```
     /// [`Arg::conflicts_with`]: ./struct.Arg.html#method.conflicts_with
     pub fn conflicts_with_all(mut self, names: &[&'a str]) -> Self {
-        if let Some(ref mut vec) = self.b.blacklist {
+        if let Some(ref mut vec) = self.b.conflicts {
             for s in names {
                 vec.push(s);
             }
         } else {
-            self.b.blacklist = Some(names.iter().map(|s| *s).collect::<Vec<_>>());
+            self.b.conflicts = Some(names.iter().map(|s| *s).collect::<Vec<_>>());
         }
         self
     }
