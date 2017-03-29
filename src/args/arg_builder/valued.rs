@@ -6,9 +6,12 @@ use serde::ser::SerializeStruct;
 use std::rc::Rc;
 use std::ffi::{OsStr, OsString};
 
-use vec_map::VecMap;
-
 use Arg;
+use args::arg_builder::default_vals::DefaultValueIfs;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::ffi::OsStrExt;
+#[cfg(target_os = "windows")]
+use osstringext::OsStrExt3;
 
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
@@ -16,7 +19,7 @@ pub struct Valued<'a, 'b>
     where 'a: 'b
 {
     pub possible_vals: Option<Vec<&'b str>>,
-    pub val_names: Option<VecMap<&'b str>>,
+    pub val_names: Option<Vec<&'b str>>,
     pub num_vals: Option<u64>,
     pub max_vals: Option<u64>,
     pub min_vals: Option<u64>,
@@ -24,7 +27,7 @@ pub struct Valued<'a, 'b>
     pub validator_os: Option<Rc<Fn(&OsStr) -> Result<(), OsString>>>,
     pub val_delim: Option<char>,
     pub default_val: Option<&'b OsStr>,
-    pub default_vals_ifs: Option<VecMap<(&'a str, Option<&'b OsStr>, &'b OsStr)>>,
+    pub default_vals_ifs: Option<DefaultValueIfs<'a, 'b>>,
     pub terminator: Option<&'b str>,
 }
 
@@ -80,7 +83,7 @@ impl<'a, 'b> serde::Serialize for Valued<'a, 'b> {
         try!(struc.serialize_field("validator", &self.validator.is_some()));
         try!(struc.serialize_field("validator_os", &self.validator_os.is_some()));
         try!(struc.serialize_field("val_delim", &self.val_delim));
-        try!(struc.serialize_field("default_val", &self.default_val));
+        try!(struc.serialize_field("default_val", &self.default_val.map(|oss| oss.as_bytes())));
         try!(struc.serialize_field("default_vals_ifs", &self.default_vals_ifs));
         try!(struc.serialize_field("terminator", &self.terminator));
         struc.end()
