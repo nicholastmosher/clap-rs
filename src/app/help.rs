@@ -305,7 +305,7 @@ impl<'a> Help<'a> {
         if arg.takes_value() {
             if let Some(vec) = arg.val_names() {
                 let mut it = vec.iter().peekable();
-                while let Some((_, val)) = it.next() {
+                while let Some(val) = it.next() {
                     try!(color!(self, "<{}>", val, good));
                     if it.peek().is_some() {
                         try!(write!(self.writer, " "));

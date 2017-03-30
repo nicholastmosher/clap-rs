@@ -13,7 +13,7 @@ pub struct Base<'a, 'b>
     pub help: Option<&'b str>,
     pub conflicts: Option<Vec<&'a str>>,
     pub settings: ArgFlags,
-    pub r_unless: Option<Vec<&'a str>>,
+    pub required_unless: Option<Vec<&'a str>>,
     pub overrides: Option<Vec<&'a str>>,
     pub groups: Option<Vec<&'a str>>,
     pub requires: Option<Vec<(Option<&'b str>, &'a str)>>,

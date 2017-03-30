@@ -1,6 +1,7 @@
 pub use self::any_arg::{AnyArg, DispOrder};
 pub use self::arg::Arg;
-pub use self::arg_builder::{Base, Switched, Valued, FlagBuilder, OptBuilder, PosBuilder};
+pub use self::arg_builder::{Base, Switched, Valued, FlagBuilder, OptBuilder, PosBuilder,
+                            DefaultValue};
 pub use self::arg_matcher::ArgMatcher;
 pub use self::arg_matches::{Values, OsValues, ArgMatches};
 pub use self::group::ArgGroup;

@@ -18,14 +18,13 @@ use std::rc::Rc;
 use std::result::Result as StdResult;
 
 // Third Party
-use vec_map::{self, VecMap};
 #[cfg(feature = "yaml")]
 use yaml_rust::Yaml;
 
 // Internal
 use app::help::Help;
 use app::parser::Parser;
-use args::{AnyArg, Arg, ArgGroup, ArgMatcher, ArgMatches, ArgSettings};
+use args::{AnyArg, Arg, ArgGroup, ArgMatcher, ArgMatches, ArgSettings, DefaultValue};
 use errors::Result as ClapResult;
 pub use self::settings::AppSettings;
 use completions::Shell;
@@ -1604,7 +1603,7 @@ impl<'n, 'e> AnyArg<'n, 'e> for App<'n, 'e> {
     fn requires(&self) -> Option<&[(Option<&'e str>, &'n str)]> { None }
     fn blacklist(&self) -> Option<&[&'e str]> { None }
     fn required_unless(&self) -> Option<&[&'e str]> { None }
-    fn val_names(&self) -> Option<&VecMap<&'e str>> { None }
+    fn val_names(&self) -> Option<&[&'e str]> { None }
     fn is_set(&self, _: ArgSettings) -> bool { false }
     fn val_terminator(&self) -> Option<&'e str> { None }
     fn set(&mut self, _: ArgSettings) {
@@ -1623,9 +1622,7 @@ impl<'n, 'e> AnyArg<'n, 'e> for App<'n, 'e> {
     fn takes_value(&self) -> bool { true }
     fn help(&self) -> Option<&'e str> { self.p.meta.about }
     fn default_val(&self) -> Option<&'e OsStr> { None }
-    fn default_vals_ifs(&self) -> Option<vec_map::Values<(&'n str, Option<&'e OsStr>, &'e OsStr)>> {
-        None
-    }
+    fn default_vals_ifs(&self) -> Option<&[DefaultValue<'n, 'e>]> { None }
     fn longest_filter(&self) -> bool { true }
     fn aliases(&self) -> Option<Vec<&'e str>> {
         if let Some(ref aliases) = self.p.meta.aliases {

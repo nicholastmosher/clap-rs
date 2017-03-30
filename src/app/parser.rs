@@ -1648,9 +1648,9 @@ impl<'a, 'b> Parser<'a, 'b>
                 if let Some(ref vm) = $a.v.default_vals_ifs {
                     let mut done = false;
                     if $m.get($a.b.name).is_none() {
-                        for &(arg, val, default) in vm.values() {
-                            let add = if let Some(a) = $m.get(arg) {
-                                if let Some(v) = val {
+                        for def in vm {
+                            let add = if let Some(a) = $m.get(def.if_arg) {
+                                if let Some(v) = def.if_val {
                                     a.vals.iter().any(|value| v == value)
                                 } else {
                                     true
@@ -1659,7 +1659,7 @@ impl<'a, 'b> Parser<'a, 'b>
                                 false
                             };
                             if add {
-                                try!($_self.add_val_to_arg($a, OsStr::new(default), $m));
+                                try!($_self.add_val_to_arg($a, OsStr::new(def.def_val), $m));
                                 if $_self.cache.map_or(true, |name| name != $a.name()) {
                                     arg_post_processing!($_self, $a, $m);
                                     $_self.cache = Some($a.name());

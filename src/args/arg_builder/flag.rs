@@ -6,12 +6,10 @@ use std::result::Result as StdResult;
 use std::ffi::{OsStr, OsString};
 use std::mem;
 
-// Third Party
-use vec_map::{self, VecMap};
-
 // Internal
 use Arg;
 use args::{ArgSettings, Base, Switched, AnyArg, DispOrder};
+use args::arg_builder::DefaultValue;
 
 #[derive(Default, Clone, Debug)]
 #[doc(hidden)]
@@ -23,7 +21,12 @@ pub struct FlagBuilder<'n, 'e>
 }
 
 impl<'n, 'e> FlagBuilder<'n, 'e> {
-    pub fn new(name: &'n str) -> Self { FlagBuilder { b: Base::new(name), ..Default::default() } }
+    pub fn new(name: &'n str) -> Self {
+        FlagBuilder {
+            b: Base::new(name),
+            ..Default::default()
+        }
+    }
 }
 
 impl<'a, 'b, 'z> From<&'z Arg<'a, 'b>> for FlagBuilder<'a, 'b> {
@@ -69,7 +72,7 @@ impl<'n, 'e> AnyArg<'n, 'e> for FlagBuilder<'n, 'e> {
     fn takes_value(&self) -> bool { false }
     fn set(&mut self, s: ArgSettings) { self.b.settings.set(s) }
     fn max_vals(&self) -> Option<u64> { None }
-    fn val_names(&self) -> Option<&VecMap<&'e str>> { None }
+    fn val_names(&self) -> Option<&[&'e str]> { None }
     fn num_vals(&self) -> Option<u64> { None }
     fn possible_vals(&self) -> Option<&[&'e str]> { None }
     fn validator(&self) -> Option<&Rc<Fn(String) -> StdResult<(), String>>> { None }
@@ -81,13 +84,12 @@ impl<'n, 'e> AnyArg<'n, 'e> for FlagBuilder<'n, 'e> {
     fn help(&self) -> Option<&'e str> { self.b.help }
     fn val_terminator(&self) -> Option<&'e str> { None }
     fn default_val(&self) -> Option<&'e OsStr> { None }
-    fn default_vals_ifs(&self) -> Option<vec_map::Values<(&'n str, Option<&'e OsStr>, &'e OsStr)>> {
-        None
-    }
+    fn default_vals_ifs(&self) -> Option<&[DefaultValue<'n, 'e>]> { None }
     fn longest_filter(&self) -> bool { self.s.long.is_some() }
     fn aliases(&self) -> Option<Vec<&'e str>> {
         if let Some(ref aliases) = self.s.aliases {
-            let vis_aliases: Vec<_> = aliases.iter()
+            let vis_aliases: Vec<_> = aliases
+                .iter()
                 .filter_map(|&(n, v)| if v { Some(n) } else { None })
                 .collect();
             if vis_aliases.is_empty() {
@@ -106,9 +108,7 @@ impl<'n, 'e> DispOrder for FlagBuilder<'n, 'e> {
 }
 
 impl<'n, 'e> PartialEq for FlagBuilder<'n, 'e> {
-    fn eq(&self, other: &FlagBuilder<'n, 'e>) -> bool {
-        self.b == other.b
-    }
+    fn eq(&self, other: &FlagBuilder<'n, 'e>) -> bool { self.b == other.b }
 }
 
 #[cfg(test)]

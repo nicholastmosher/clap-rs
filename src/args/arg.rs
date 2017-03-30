@@ -1,20 +1,25 @@
+// Std
 #[cfg(feature = "yaml")]
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::ffi::{OsString, OsStr};
-#[cfg(target_os="windows")]
-use osstringext::OsStrExt3;
 #[cfg(not(target_os="windows"))]
 use std::os::unix::ffi::OsStrExt;
 
-
+// Third Party
+#[cfg(feature = "serde")]
+use serde;
+#[cfg(feature = "serde")]
+use serde::ser::SerializeStruct;
 #[cfg(feature = "yaml")]
 use yaml_rust::Yaml;
-use vec_map::VecMap;
 
+// Internal
+#[cfg(target_os="windows")]
+use osstringext::OsStrExt3;
 use usage_parser::UsageParser;
 use args::settings::ArgSettings;
-use args::arg_builder::{Base, Valued, Switched};
+use args::arg_builder::{Base, Valued, Switched, DefaultValue};
 
 /// The abstract representation of a command line argument. Used to set all the options and
 /// relationships that define a valid argument for the program.
@@ -73,23 +78,16 @@ impl<'a, 'b> Arg<'a, 'b> {
     /// ```
     /// [`Arg::takes_value(true)`]: ./struct.Arg.html#method.takes_value
     /// [`Arg`]: ./struct.Arg.html
-    pub fn with_name(n: &'a str) -> Self { Arg { b: Base::new(n), ..Default::default() } }
+    pub fn with_name(n: &'a str) -> Self {
+        Arg {
+            b: Base::new(n),
+            ..Default::default()
+        }
+    }
 
-    /// Creates a new instance of [`Arg`] from a .yml (YAML) file.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// # #[macro_use]
-    /// # extern crate clap;
-    /// # use clap::Arg;
-    /// # fn main() {
-    /// let yml = load_yaml!("arg.yml");
-    /// let arg = Arg::from_yaml(yml);
-    /// # }
-    /// ```
-    /// [`Arg`]: ./struct.Arg.html
+    /// **Deprecated**
     #[cfg(feature = "yaml")]
+    #[deprecated(since = "2.23.0", note = "use serde instead. See `examples/17_yaml_serde.rs`. This will be removed in 3.x")]
     pub fn from_yaml(y: &BTreeMap<Yaml, Yaml>) -> Arg {
         // We WANT this to panic on error...so expect() is good.
         let name_yml = y.keys().nth(0).unwrap();
@@ -325,7 +323,10 @@ impl<'a, 'b> Arg<'a, 'b> {
     /// ```
     /// [`short`]: ./struct.Arg.html#method.short
     pub fn short<S: AsRef<str>>(mut self, s: S) -> Self {
-        self.s.short = s.as_ref().trim_left_matches(|c| c == '-').chars().nth(0);
+        self.s.short = s.as_ref()
+            .trim_left_matches(|c| c == '-')
+            .chars()
+            .nth(0);
         self
     }
 
@@ -544,13 +545,13 @@ impl<'a, 'b> Arg<'a, 'b> {
     /// allows one to access this arg early using the `--` syntax. Accessing an arg early, even with
     /// the `--` syntax is otherwise not possible.
     ///
-    /// **NOTE:** This will change the usage string to look like `$ prog [FLAGS] [-- <ARG>]` if 
+    /// **NOTE:** This will change the usage string to look like `$ prog [FLAGS] [-- <ARG>]` if
     /// `ARG` is marked as `.last(true)`.
     ///
     /// **NOTE:** This setting will imply [`AppSettings::DontCollapseArgsInUsage`] because failing
     /// to set this can make the usage string very confusing.
     ///
-    /// **NOTE**: This setting only applies to positional arguments, and has no affect on FLAGS / 
+    /// **NOTE**: This setting only applies to positional arguments, and has no affect on FLAGS /
     /// OPTIONS
     ///
     /// **CAUTION:** Setting an argument to `.last(true)` *and* having child subcommands is not
@@ -2769,8 +2770,8 @@ impl<'a, 'b> Arg<'a, 'b> {
         self.setb(ArgSettings::TakesValue);
         self.setb(ArgSettings::UseValueDelimiter);
         self.v.val_delim = Some(d.chars()
-            .nth(0)
-            .expect("Failed to get value_delimiter from arg"));
+                                    .nth(0)
+                                    .expect("Failed to get value_delimiter from arg"));
         self
     }
 
@@ -2846,11 +2847,11 @@ impl<'a, 'b> Arg<'a, 'b> {
                 l += 1;
             }
         } else {
-            let mut vm = VecMap::new();
-            for (i, n) in names.iter().enumerate() {
-                vm.insert(i, *n);
+            let mut v = vec![];
+            for n in names.iter() {
+                v.push(*n);
             }
-            self.v.val_names = Some(vm);
+            self.v.val_names = Some(v);
         }
         self
     }
@@ -2907,9 +2908,9 @@ impl<'a, 'b> Arg<'a, 'b> {
             let l = vals.len();
             vals.insert(l, name);
         } else {
-            let mut vm = VecMap::new();
-            vm.insert(0, name);
-            self.v.val_names = Some(vm);
+            let mut v = vec![];
+            v.push(name);
+            self.v.val_names = Some(v);
         }
         self
     }
@@ -3097,11 +3098,20 @@ impl<'a, 'b> Arg<'a, 'b> {
         self.setb(ArgSettings::TakesValue);
         if let Some(ref mut vm) = self.v.default_vals_ifs {
             let l = vm.len();
-            vm.insert(l, (arg, val, default));
+            vm.insert(l,
+                      DefaultValue {
+                          if_arg: arg,
+                          if_val: val,
+                          def_val: default,
+                      });
         } else {
-            let mut vm = VecMap::new();
-            vm.insert(0, (arg, val, default));
-            self.v.default_vals_ifs = Some(vm);
+            let mut v = vec![];
+            v.push(DefaultValue {
+                       if_arg: arg,
+                       if_val: val,
+                       def_val: default,
+                   });
+            self.v.default_vals_ifs = Some(v);
         }
         self
     }
@@ -3352,18 +3362,73 @@ impl<'a, 'b> Arg<'a, 'b> {
 
 impl<'a, 'b, 'z> From<&'z Arg<'a, 'b>> for Arg<'a, 'b> {
     fn from(a: &'z Arg<'a, 'b>) -> Self {
-        Arg {
-            b: a.b.clone(),
-            v: a.v.clone(),
-            s: a.s.clone(),
-            index: a.index,
-            r_ifs: a.r_ifs.clone(),
-        }
+        a.clone()
     }
 }
 
 impl<'n, 'e> PartialEq for Arg<'n, 'e> {
-    fn eq(&self, other: &Arg<'n, 'e>) -> bool {
-        self.b == other.b
+    fn eq(&self, other: &Arg<'n, 'e>) -> bool { self.b == other.b }
+}
+
+#[cfg(feature = "serde")]
+impl<'a, 'b> serde::Serialize for Arg<'a, 'b> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        // We do a lot of wierd things so that the serialized Arg struct matches what one would
+        // expect when used to the builder pattern, and not what the `Arg` struct actually looks
+        // like internally...we then do the opposite when deserializing
+        //
+        // The hard part is we need to ensure if someone serializes a struct then uses that
+        // serialization, the resulting struct should be identical to the original 
+        //
+        // TODO: add a test 
+        let mut struc = try!(serializer.serialize_struct("Arg", 39));
+        try!(struc.serialize_field("name", &self.name));
+        try!(struc.serialize_field("help", &self.help));
+        try!(struc.serialize_field("conflicts_with", &self.conflicts));
+        try!(struc.serialize_field("required_unless", &self.r_unless)); // TODO
+        // We inject a reqiored_unless_{all,one}
+        try!(struc.serialize_field("required_unless_one", &self.r_unless)); // TODO
+        try!(struc.serialize_field("required_unless_all", &self.r_unless)); // TODO
+        try!(struc.serialize_field("overrides_with", &self.overrides));
+        try!(struc.serialize_field("groups", &self.groups));
+        try!(struc.serialize_field("requires", &self.requires)); // TODO
+        // We inject a requires_ifs
+        try!(struc.serialize_field("requires_ifs", &self.requires_ifs)); // TODO
+        // We inject a required_ifs
+        try!(struc.serialize_field("required_ifs", &self.r_ifs)); // TODO
+        try!(struc.serialize_field("number_of_values", &self.num_vals));
+        try!(struc.serialize_field("min_values", &self.min_vals));
+        try!(struc.serialize_field("max_values", &self.max_vals));
+        try!(struc.serialize_field("value_names", &self.val_names));
+        try!(struc.serialize_field("value_delimiter", &self.val_delim));
+        try!(struc.serialize_field("default_value", &self.default_val));
+        try!(struc.serialize_field("default_value_ifs", &self.default_val_ifs)); // TODO
+        try!(struc.serialize_field("value_terminator", &self.terminator));
+        // We leave out validators and any *_os settings
+        try!(struc.serialize_field("short", &self.short));
+        try!(struc.serialize_field("long", &self.long));
+        try!(struc.serialize_field("aliases", &self.aliases)); // TODO
+        // We inject a visible aliases
+        try!(struc.serialize_field("visible_aliases", &self.aliases)); // TODO
+        try!(struc.serialize_field("display_order", &self.disp_ord));
+        // We leave out unified order
+        // ArgSettings ones
+        // TODO: All
+        try!(struc.serialize_field("required", &self.val_delim));
+        try!(struc.serialize_field("multiple", &self.default_val.map(|oss| oss.as_bytes())));
+        try!(struc.serialize_field("empty_values", &self.default_vals_ifs));
+        try!(struc.serialize_field("global", &self.terminator));
+        try!(struc.serialize_field("hidden", &self.num_vals));
+        try!(struc.serialize_field("takes_value", &self.min_vals));
+        try!(struc.serialize_field("value_delimiter", &self.max_vals));
+        try!(struc.serialize_field("next_line_help", &self.val_names));
+        try!(struc.serialize_field("require_delimiter", &self.validator.is_some()));
+        try!(struc.serialize_field("hide_possible_values", &self.validator_os.is_some()));
+        try!(struc.serialize_field("allow_leading_hyphen", &self.val_delim));
+        try!(struc.serialize_field("require_equals", &self.default_val.map(|oss| oss.as_bytes())));
+        try!(struc.serialize_field("last", &self.default_vals_ifs));
+        try!(struc.serialize_field("hide_default_values", &self.terminator));
+        try!(struc.serialize_field("value_delimiter_not_set", &self.terminator));
+        struc.end()
     }
 }

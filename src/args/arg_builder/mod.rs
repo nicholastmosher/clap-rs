@@ -4,6 +4,7 @@ pub use self::positional::PosBuilder;
 pub use self::base::Base;
 pub use self::switched::Switched;
 pub use self::valued::Valued;
+pub use self::default_vals::DefaultValue;
 
 mod flag;
 mod positional;

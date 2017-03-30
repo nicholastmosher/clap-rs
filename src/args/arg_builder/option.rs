@@ -5,11 +5,9 @@ use std::result::Result as StdResult;
 use std::ffi::{OsStr, OsString};
 use std::mem;
 
-// Third Party
-use vec_map::{self, VecMap};
-
 // Internal
 use args::{ArgSettings, AnyArg, Base, Switched, Valued, Arg, DispOrder};
+use args::arg_builder::DefaultValue;
 
 #[allow(missing_debug_implementations)]
 #[doc(hidden)]
@@ -65,7 +63,7 @@ impl<'n, 'e> Display for OptBuilder<'n, 'e> {
         // Write the values such as <name1> <name2>
         if let Some(ref vec) = self.v.val_names {
             let mut it = vec.iter().peekable();
-            while let Some((_, val)) = it.next() {
+            while let Some(val) = it.next() {
                 try!(write!(f, "<{}>", val));
                 if it.peek().is_some() {
                     try!(write!(f, " "));
@@ -109,7 +107,7 @@ impl<'n, 'e> AnyArg<'n, 'e> for OptBuilder<'n, 'e> {
     }
     fn blacklist(&self) -> Option<&[&'e str]> { self.b.conflicts.as_ref().map(|o| &o[..]) }
     fn required_unless(&self) -> Option<&[&'e str]> { self.b.r_unless.as_ref().map(|o| &o[..]) }
-    fn val_names(&self) -> Option<&VecMap<&'e str>> { self.v.val_names.as_ref() }
+    fn val_names(&self) -> Option<&[&'e str]> { self.v.val_names.as_ref().map(|o|&o[..]) }
     fn is_set(&self, s: ArgSettings) -> bool { self.b.settings.is_set(s) }
     fn has_switch(&self) -> bool { true }
     fn set(&mut self, s: ArgSettings) { self.b.settings.set(s) }
@@ -130,8 +128,8 @@ impl<'n, 'e> AnyArg<'n, 'e> for OptBuilder<'n, 'e> {
     fn takes_value(&self) -> bool { true }
     fn help(&self) -> Option<&'e str> { self.b.help }
     fn default_val(&self) -> Option<&'e OsStr> { self.v.default_val }
-    fn default_vals_ifs(&self) -> Option<vec_map::Values<(&'n str, Option<&'e OsStr>, &'e OsStr)>> {
-        self.v.default_vals_ifs.as_ref().map(|vm| vm.values())
+    fn default_vals_ifs(&self) -> Option<&[DefaultValue<'n, 'e>]> {
+        self.v.default_vals_ifs.as_ref().map(|o| &o[..])
     }
     fn longest_filter(&self) -> bool { true }
     fn aliases(&self) -> Option<Vec<&'e str>> {

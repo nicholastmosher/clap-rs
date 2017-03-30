@@ -1,6 +1,3 @@
-// Third Party
-use vec_map::VecMap;
-
 // Internal
 use INTERNAL_ERROR_MSG;
 use args::Arg;
@@ -95,8 +92,8 @@ impl<'a> UsageParser<'a> {
                 let len = v.len();
                 v.insert(len, name);
             } else {
-                let mut v = VecMap::new();
-                v.insert(0, name);
+                let mut v = vec![];
+                v.push(name);
                 arg.v.val_names = Some(v);
                 arg.setb(ArgSettings::TakesValue);
             }

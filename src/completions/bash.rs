@@ -163,7 +163,7 @@ complete -F _{name} -o bashdefault -o default {name}
             ret = format!("$(compgen -W \"{}\" -- ${{cur}})", vals.join(" "));
         } else if let Some(vec) = o.val_names() {
             let mut it = vec.iter().peekable();
-            while let Some((_, val)) = it.next() {
+            while let Some(val) = it.next() {
                 ret = format!("{}<{}>{}",
                               ret,
                               val,

@@ -6,12 +6,10 @@ use std::result::Result as StdResult;
 use std::ffi::{OsStr, OsString};
 use std::mem;
 
-// Third Party
-use vec_map::{self, VecMap};
-
 // Internal
 use Arg;
 use args::{ArgSettings, Base, Valued, AnyArg, DispOrder};
+use args::arg_builder::DefaultValue;
 
 #[allow(missing_debug_implementations)]
 #[doc(hidden)]
@@ -68,7 +66,7 @@ impl<'n, 'e> PosBuilder<'n, 'e> {
 
     pub fn name_no_brackets(&self) -> Cow<str> {
         if let Some(ref names) = self.v.val_names {
-            Cow::Owned(names.values()
+            Cow::Owned(names.iter()
                 .map(|n| format!("<{}>", n))
                 .collect::<Vec<_>>()
                 .join(" "))
@@ -83,7 +81,7 @@ impl<'n, 'e> Display for PosBuilder<'n, 'e> {
         if let Some(ref names) = self.v.val_names {
             try!(write!(f,
                         "{}",
-                        names.values()
+                        names.iter()
                             .map(|n| format!("<{}>", n))
                             .collect::<Vec<_>>()
                             .join(" ")));
@@ -106,7 +104,7 @@ impl<'n, 'e> AnyArg<'n, 'e> for PosBuilder<'n, 'e> {
     }
     fn blacklist(&self) -> Option<&[&'e str]> { self.b.conflicts.as_ref().map(|o| &o[..]) }
     fn required_unless(&self) -> Option<&[&'e str]> { self.b.r_unless.as_ref().map(|o| &o[..]) }
-    fn val_names(&self) -> Option<&VecMap<&'e str>> { self.v.val_names.as_ref() }
+    fn val_names(&self) -> Option<&[&'e str]> { self.v.val_names.as_ref().map(|o|&o[..]) }
     fn is_set(&self, s: ArgSettings) -> bool { self.b.settings.is_set(s) }
     fn set(&mut self, s: ArgSettings) { self.b.settings.set(s) }
     fn has_switch(&self) -> bool { false }
@@ -126,8 +124,8 @@ impl<'n, 'e> AnyArg<'n, 'e> for PosBuilder<'n, 'e> {
     fn val_delim(&self) -> Option<char> { self.v.val_delim }
     fn takes_value(&self) -> bool { true }
     fn help(&self) -> Option<&'e str> { self.b.help }
-    fn default_vals_ifs(&self) -> Option<vec_map::Values<(&'n str, Option<&'e OsStr>, &'e OsStr)>> {
-        self.v.default_vals_ifs.as_ref().map(|vm| vm.values())
+    fn default_vals_ifs(&self) -> Option<&[DefaultValue<'n, 'e>]> {
+        self.v.default_vals_ifs.as_ref().map(|o| &o[..])
     }
     fn default_val(&self) -> Option<&'e OsStr> { self.v.default_val }
     fn longest_filter(&self) -> bool { true }

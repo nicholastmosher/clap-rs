@@ -1,20 +1,23 @@
+// Std
+use std::rc::Rc;
+use std::ffi::{OsStr, OsString};
+
+// Third Party
 #[cfg(feature = "serde")]
 use serde;
 #[cfg(feature = "serde")]
 use serde::ser::SerializeStruct;
 
-use std::rc::Rc;
-use std::ffi::{OsStr, OsString};
-
+// Internal
 use Arg;
-use args::arg_builder::default_vals::DefaultValueIfs;
+use args::arg_builder::default_vals::DefaultValue;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::ffi::OsStrExt;
 #[cfg(target_os = "windows")]
 use osstringext::OsStrExt3;
 
 #[allow(missing_debug_implementations)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Valued<'a, 'b>
     where 'a: 'b
 {
@@ -27,26 +30,8 @@ pub struct Valued<'a, 'b>
     pub validator_os: Option<Rc<Fn(&OsStr) -> Result<(), OsString>>>,
     pub val_delim: Option<char>,
     pub default_val: Option<&'b OsStr>,
-    pub default_vals_ifs: Option<DefaultValueIfs<'a, 'b>>,
+    pub default_vals_ifs: Option<Vec<DefaultValue<'a, 'b>>>,
     pub terminator: Option<&'b str>,
-}
-
-impl<'n, 'e> Default for Valued<'n, 'e> {
-    fn default() -> Self {
-        Valued {
-            possible_vals: None,
-            num_vals: None,
-            min_vals: None,
-            max_vals: None,
-            val_names: None,
-            validator: None,
-            validator_os: None,
-            val_delim: None,
-            default_val: None,
-            default_vals_ifs: None,
-            terminator: None,
-        }
-    }
 }
 
 impl<'n, 'e> Valued<'n, 'e> {
