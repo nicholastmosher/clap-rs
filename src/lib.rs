@@ -517,17 +517,14 @@
         missing_copy_implementations,
         trivial_casts,
         unused_import_braces,
-        unused_allocation)]
-// Lints we'd like to deny but are currently failing for upstream crates
-//      unused_qualifications       (bitflags, clippy)
-//      trivial_numeric_casts       (bitflags)
+        unused_allocation,
+        unused_qualifications,        // (bitflags, clippy)
+        trivial_numeric_casts)]       // (bitflags)
 #![cfg_attr(not(any(feature = "lints", feature = "nightly")), forbid(unstable_features))]
 #![cfg_attr(feature = "lints", feature(plugin))]
 #![cfg_attr(feature = "lints", plugin(clippy))]
 #![cfg_attr(feature = "lints", deny(warnings))]
-#![cfg_attr(feature = "lints", allow(cyclomatic_complexity))]
 #![cfg_attr(feature = "lints", allow(doc_markdown))]
-#![cfg_attr(feature = "lints", allow(explicit_iter_loop))]
 
 #[cfg(feature = "suggestions")]
 extern crate strsim;
@@ -555,15 +552,13 @@ pub use completions::Shell;
 
 #[macro_use]
 mod macros;
-mod app;
-mod args;
-mod usage_parser;
-mod fmt;
-mod suggestions;
+mod builders;
 mod errors;
 mod osstringext;
 mod strext;
 mod completions;
+mod parsing;
+mod help;
 
 const INTERNAL_ERROR_MSG: &'static str = "Fatal internal error. Please consider filing a bug \
                                           report at https://github.com/kbknapp/clap-rs/issues";
