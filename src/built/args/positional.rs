@@ -10,13 +10,10 @@ use std::mem;
 use vec_map::{self, VecMap};
 
 // Internal
-use Arg;
-use args::{ArgSettings, Base, Valued, AnyArg, DispOrder};
 
-#[allow(missing_debug_implementations)]
 #[doc(hidden)]
-#[derive(Clone, Default)]
-pub struct PosBuilder<'key, 'other>
+#[derive(Clone, Default, Debug)]
+pub struct Positional<'key, 'other>
     where 'key: 'other
 {
     pub b: Base<'key, 'other>,
@@ -24,9 +21,9 @@ pub struct PosBuilder<'key, 'other>
     pub index: u64,
 }
 
-impl<'key, 'other> PosBuilder<'key, 'other> {
+impl<'key, 'other> Positional<'key, 'other> {
     pub fn new(name: &'key str, idx: u64) -> Self {
-        PosBuilder {
+        Positional {
             b: Base::new(name),
             index: idx,
             ..Default::default()
@@ -34,7 +31,7 @@ impl<'key, 'other> PosBuilder<'key, 'other> {
     }
 
     pub fn from_arg_ref(a: &Arg<'key, 'other>, idx: u64) -> Self {
-        let mut pb = PosBuilder {
+        let mut pb = Positional {
             b: Base::from(a),
             v: Valued::from(a),
             index: idx,
@@ -51,7 +48,7 @@ impl<'key, 'other> PosBuilder<'key, 'other> {
            (a.v.num_vals.is_some() && a.v.num_vals.unwrap() > 1) {
             a.b.settings.set(ArgSettings::Multiple);
         }
-        PosBuilder {
+        Positional {
             b: mem::replace(&mut a.b, Base::default()),
             v: mem::replace(&mut a.v, Valued::default()),
             index: idx,
@@ -78,7 +75,7 @@ impl<'key, 'other> PosBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> Display for PosBuilder<'key, 'other> {
+impl<'key, 'other> Display for Positional<'key, 'other> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if let Some(ref names) = self.v.val_names {
             try!(write!(f,
@@ -98,7 +95,7 @@ impl<'key, 'other> Display for PosBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> AnyArg<'key, 'other> for PosBuilder<'key, 'other> {
+impl<'key, 'other> AnyArg<'key, 'other> for Positional<'key, 'other> {
     fn name(&self) -> &'key str { self.b.name }
     fn overrides(&self) -> Option<&[&'other str]> { self.b.overrides.as_ref().map(|o| &o[..]) }
     fn requires(&self) -> Option<&[(Option<&'other str>, &'key str)]> {
@@ -135,12 +132,12 @@ impl<'key, 'other> AnyArg<'key, 'other> for PosBuilder<'key, 'other> {
     fn aliases(&self) -> Option<Vec<&'other str>> { None }
 }
 
-impl<'key, 'other> DispOrder for PosBuilder<'key, 'other> {
+impl<'key, 'other> DispOrder for Positional<'key, 'other> {
     fn disp_ord(&self) -> usize { self.index as usize }
 }
 
-impl<'key, 'other> PartialEq for PosBuilder<'key, 'other> {
-    fn eq(&self, other: &PosBuilder<'key, 'other>) -> bool {
+impl<'key, 'other> PartialEq for Positional<'key, 'other> {
+    fn eq(&self, other: &Positional<'key, 'other>) -> bool {
         self.b == other.b
     }
 }
@@ -148,12 +145,12 @@ impl<'key, 'other> PartialEq for PosBuilder<'key, 'other> {
 #[cfg(test)]
 mod test {
     use args::settings::ArgSettings;
-    use super::PosBuilder;
+    use super::Positional;
     use vec_map::VecMap;
 
     #[test]
     fn display_mult() {
-        let mut p = PosBuilder::new("pos", 1);
+        let mut p = Positional::new("pos", 1);
         p.b.settings.set(ArgSettings::Multiple);
 
         assert_eq!(&*format!("{}", p), "<pos>...");
@@ -161,7 +158,7 @@ mod test {
 
     #[test]
     fn display_required() {
-        let mut p2 = PosBuilder::new("pos", 1);
+        let mut p2 = Positional::new("pos", 1);
         p2.b.settings.set(ArgSettings::Required);
 
         assert_eq!(&*format!("{}", p2), "<pos>");
@@ -169,7 +166,7 @@ mod test {
 
     #[test]
     fn display_val_names() {
-        let mut p2 = PosBuilder::new("pos", 1);
+        let mut p2 = Positional::new("pos", 1);
         let mut vm = VecMap::new();
         vm.insert(0, "file1");
         vm.insert(1, "file2");
@@ -180,7 +177,7 @@ mod test {
 
     #[test]
     fn display_val_names_req() {
-        let mut p2 = PosBuilder::new("pos", 1);
+        let mut p2 = Positional::new("pos", 1);
         p2.b.settings.set(ArgSettings::Required);
         let mut vm = VecMap::new();
         vm.insert(0, "file1");

@@ -9,12 +9,10 @@ use std::mem;
 use vec_map::{self, VecMap};
 
 // Internal
-use args::{ArgSettings, AnyArg, Base, Switched, Valued, Arg, DispOrder};
 
-#[allow(missing_debug_implementations)]
 #[doc(hidden)]
-#[derive(Default, Clone)]
-pub struct OptBuilder<'key, 'other>
+#[derive(Default, Clone, Debug)]
+pub struct Option<'key, 'other>
     where 'key: 'other
 {
     pub b: Base<'key, 'other>,
@@ -22,13 +20,13 @@ pub struct OptBuilder<'key, 'other>
     pub v: Valued<'key, 'other>,
 }
 
-impl<'key, 'other> OptBuilder<'key, 'other> {
-    pub fn new(name: &'key str) -> Self { OptBuilder { b: Base::new(name), ..Default::default() } }
+impl<'key, 'other> Option<'key, 'other> {
+    pub fn new(name: &'key str) -> Self { Option { b: Base::new(name), ..Default::default() } }
 }
 
-impl<'key, 'other, 'z> From<&'z Arg<'key, 'other>> for OptBuilder<'key, 'other> {
+impl<'key, 'other, 'z> From<&'z Arg<'key, 'other>> for Option<'key, 'other> {
     fn from(a: &'z Arg<'key, 'other>) -> Self {
-        OptBuilder {
+        Option {
             b: Base::from(a),
             s: Switched::from(a),
             v: Valued::from(a),
@@ -36,10 +34,10 @@ impl<'key, 'other, 'z> From<&'z Arg<'key, 'other>> for OptBuilder<'key, 'other> 
     }
 }
 
-impl<'key, 'other> From<Arg<'key, 'other>> for OptBuilder<'key, 'other> {
+impl<'key, 'other> From<Arg<'key, 'other>> for Option<'key, 'other> {
     fn from(mut a: Arg<'key, 'other>) -> Self {
         a.v.fill_in();
-        OptBuilder {
+        Option {
             b: mem::replace(&mut a.b, Base::default()),
             s: mem::replace(&mut a.s, Switched::default()),
             v: mem::replace(&mut a.v, Valued::default()),
@@ -47,9 +45,9 @@ impl<'key, 'other> From<Arg<'key, 'other>> for OptBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> Display for OptBuilder<'key, 'other> {
+impl<'key, 'other> Display for Option<'key, 'other> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        debugln!("OptBuilder::fmt");
+        debugln!("Option::fmt");
         let sep = if self.b.is_set(ArgSettings::RequireEquals) {
             "="
         } else {
@@ -101,7 +99,7 @@ impl<'key, 'other> Display for OptBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> AnyArg<'key, 'other> for OptBuilder<'key, 'other> {
+impl<'key, 'other> AnyArg<'key, 'other> for Option<'key, 'other> {
     fn name(&self) -> &'key str { self.b.name }
     fn overrides(&self) -> Option<&[&'other str]> { self.b.overrides.as_ref().map(|o| &o[..]) }
     fn requires(&self) -> Option<&[(Option<&'other str>, &'key str)]> {
@@ -151,12 +149,12 @@ impl<'key, 'other> AnyArg<'key, 'other> for OptBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> DispOrder for OptBuilder<'key, 'other> {
+impl<'key, 'other> DispOrder for Option<'key, 'other> {
     fn disp_ord(&self) -> usize { self.s.disp_ord }
 }
 
-impl<'key, 'other> PartialEq for OptBuilder<'key, 'other> {
-    fn eq(&self, other: &OptBuilder<'key, 'other>) -> bool {
+impl<'key, 'other> PartialEq for Option<'key, 'other> {
+    fn eq(&self, other: &Option<'key, 'other>) -> bool {
         self.b == other.b
     }
 }
@@ -164,12 +162,12 @@ impl<'key, 'other> PartialEq for OptBuilder<'key, 'other> {
 #[cfg(test)]
 mod test {
     use args::settings::ArgSettings;
-    use super::OptBuilder;
+    use super::Option;
     use vec_map::VecMap;
 
     #[test]
     fn optbuilder_display1() {
-        let mut o = OptBuilder::new("opt");
+        let mut o = Option::new("opt");
         o.s.long = Some("option");
         o.b.settings.set(ArgSettings::Multiple);
 
@@ -182,7 +180,7 @@ mod test {
         v_names.insert(0, "file");
         v_names.insert(1, "name");
 
-        let mut o2 = OptBuilder::new("opt");
+        let mut o2 = Option::new("opt");
         o2.s.short = Some('o');
         o2.v.val_names = Some(v_names);
 
@@ -195,7 +193,7 @@ mod test {
         v_names.insert(0, "file");
         v_names.insert(1, "name");
 
-        let mut o2 = OptBuilder::new("opt");
+        let mut o2 = Option::new("opt");
         o2.s.short = Some('o');
         o2.v.val_names = Some(v_names);
         o2.b.settings.set(ArgSettings::Multiple);
@@ -205,7 +203,7 @@ mod test {
 
     #[test]
     fn optbuilder_display_single_alias() {
-        let mut o = OptBuilder::new("opt");
+        let mut o = Option::new("opt");
         o.s.long = Some("option");
         o.s.aliases = Some(vec![("als", true)]);
 
@@ -214,7 +212,7 @@ mod test {
 
     #[test]
     fn optbuilder_display_multiple_aliases() {
-        let mut o = OptBuilder::new("opt");
+        let mut o = Option::new("opt");
         o.s.long = Some("option");
         o.s.aliases =
             Some(vec![("als_not_visible", false), ("als2", true), ("als3", true), ("als4", true)]);

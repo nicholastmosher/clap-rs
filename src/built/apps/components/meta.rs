@@ -1,5 +1,5 @@
 #[doc(hidden)]
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct AppMeta<'other> {
     pub name: String,
     pub bin_name: Option<String>,

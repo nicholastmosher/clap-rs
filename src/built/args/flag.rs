@@ -10,41 +10,39 @@ use std::mem;
 use vec_map::{self, VecMap};
 
 // Internal
-use Arg;
-use args::{ArgSettings, Base, Switched, AnyArg, DispOrder};
 
 #[derive(Default, Clone, Debug)]
 #[doc(hidden)]
-pub struct FlagBuilder<'key, 'other>
+pub struct Flag<'key, 'other>
     where 'key: 'other
 {
     pub b: Base<'key, 'other>,
     pub s: Switched<'other>,
 }
 
-impl<'key, 'other> FlagBuilder<'key, 'other> {
-    pub fn new(name: &'key str) -> Self { FlagBuilder { b: Base::new(name), ..Default::default() } }
+impl<'key, 'other> Flag<'key, 'other> {
+    pub fn new(name: &'key str) -> Self { Flag { b: Base::new(name), ..Default::default() } }
 }
 
-impl<'key, 'other, 'z> From<&'z Arg<'key, 'other>> for FlagBuilder<'key, 'other> {
+impl<'key, 'other, 'z> From<&'z Arg<'key, 'other>> for Flag<'key, 'other> {
     fn from(a: &'z Arg<'key, 'other>) -> Self {
-        FlagBuilder {
+        Flag {
             b: Base::from(a),
             s: Switched::from(a),
         }
     }
 }
 
-impl<'key, 'other> From<Arg<'key, 'other>> for FlagBuilder<'key, 'other> {
+impl<'key, 'other> From<Arg<'key, 'other>> for Flag<'key, 'other> {
     fn from(mut a: Arg<'key, 'other>) -> Self {
-        FlagBuilder {
+        Flag {
             b: mem::replace(&mut a.b, Base::default()),
             s: mem::replace(&mut a.s, Switched::default()),
         }
     }
 }
 
-impl<'key, 'other> Display for FlagBuilder<'key, 'other> {
+impl<'key, 'other> Display for Flag<'key, 'other> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if let Some(l) = self.s.long {
             try!(write!(f, "--{}", l));
@@ -56,7 +54,7 @@ impl<'key, 'other> Display for FlagBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> AnyArg<'key, 'other> for FlagBuilder<'key, 'other> {
+impl<'key, 'other> AnyArg<'key, 'other> for Flag<'key, 'other> {
     fn name(&self) -> &'key str { self.b.name }
     fn overrides(&self) -> Option<&[&'other str]> { self.b.overrides.as_ref().map(|o| &o[..]) }
     fn requires(&self) -> Option<&[(Option<&'other str>, &'key str)]> {
@@ -102,12 +100,12 @@ impl<'key, 'other> AnyArg<'key, 'other> for FlagBuilder<'key, 'other> {
     }
 }
 
-impl<'key, 'other> DispOrder for FlagBuilder<'key, 'other> {
+impl<'key, 'other> DispOrder for Flag<'key, 'other> {
     fn disp_ord(&self) -> usize { self.s.disp_ord }
 }
 
-impl<'key, 'other> PartialEq for FlagBuilder<'key, 'other> {
-    fn eq(&self, other: &FlagBuilder<'key, 'other>) -> bool {
+impl<'key, 'other> PartialEq for Flag<'key, 'other> {
+    fn eq(&self, other: &Flag<'key, 'other>) -> bool {
         self.b == other.b
     }
 }
@@ -115,17 +113,17 @@ impl<'key, 'other> PartialEq for FlagBuilder<'key, 'other> {
 #[cfg(test)]
 mod test {
     use args::settings::ArgSettings;
-    use super::FlagBuilder;
+    use super::Flag;
 
     #[test]
     fn flagbuilder_display() {
-        let mut f = FlagBuilder::new("flg");
+        let mut f = Flag::new("flg");
         f.b.settings.set(ArgSettings::Multiple);
         f.s.long = Some("flag");
 
         assert_eq!(&*format!("{}", f), "--flag");
 
-        let mut f2 = FlagBuilder::new("flg");
+        let mut f2 = Flag::new("flg");
         f2.s.short = Some('f');
 
         assert_eq!(&*format!("{}", f2), "-f");
@@ -133,7 +131,7 @@ mod test {
 
     #[test]
     fn flagbuilder_display_single_alias() {
-        let mut f = FlagBuilder::new("flg");
+        let mut f = Flag::new("flg");
         f.s.long = Some("flag");
         f.s.aliases = Some(vec![("als", true)]);
 
@@ -142,7 +140,7 @@ mod test {
 
     #[test]
     fn flagbuilder_display_multiple_aliases() {
-        let mut f = FlagBuilder::new("flg");
+        let mut f = Flag::new("flg");
         f.s.short = Some('f');
         f.s.aliases =
             Some(vec![("alias_not_visible", false), ("f2", true), ("f3", true), ("f4", true)]);
