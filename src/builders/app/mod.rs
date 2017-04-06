@@ -67,7 +67,7 @@ use completions::Shell;
 /// [`Arg`]
 /// [`SubCommand`]
 /// [`ArgMatches<'key>`]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct App<'key, 'other>
     where 'key: 'help
 {
@@ -80,11 +80,10 @@ pub struct App<'key, 'other>
     // Contains command wide settings
     settings: AppFlags,
     // Contains command wide settings that will be propagated to children
-    g_settings: AppFlags,
+    global_settings: AppFlags,
     // Contains child subcommands
     subcommands: Vec<App<'key, 'other>>,
 }
-
 
 impl<'key, 'other> App<'key, 'other> {
     /// Creates a new instance of an application requiring a name. The name may be, but doesn't
@@ -410,7 +409,7 @@ impl<'key, 'other> App<'key, 'other> {
     /// # ;
     /// ```
     /// [`ArgMatches::usage`]: ./struct.ArgMatches.html#method.usage
-    pub fn usage<S: Into<&'other str>>(mut self, usage: S) -> Self {
+    pub fn custom_usage<S: Into<&'other str>>(mut self, usage: S) -> Self {
         self.meta.usage_str = Some(usage.into());
         self
     }
@@ -449,7 +448,7 @@ impl<'key, 'other> App<'key, 'other> {
     /// # ;
     /// ```
     /// [`Arg::help`]: ./struct.Arg.html#method.help
-    pub fn help<S: Into<&'other str>>(mut self, help: S) -> Self {
+    pub fn custom_help<S: Into<&'other str>>(mut self, help: S) -> Self {
         self.meta.help_str = Some(help.into());
         self
     }
@@ -1233,6 +1232,51 @@ impl<'key, 'other> App<'key, 'other> {
     /// [`env::args_os`]: https://doc.rust-lang.org/std/env/fn.args_os.html
     pub fn get_matches(self) -> ArgMatches<'key> { self.get_matches_from(&mut env::args_os()) }
 
+    /// Starts the parsing process. Like [`App::get_matches`] this method does not return a [`clap::Result`]
+    /// and will automatically exit with an error message. This method, however, lets you specify
+    /// what iterator to use when performing matches, such as a [`Vec`] of your making.
+    ///
+    /// **NOTE:** The first argument will be parsed as the binary name unless
+    /// [`AppSettings::NoBinaryName`] is used
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use clap::{App, Arg};
+    /// let arg_vec = vec!["my_prog", "some", "args", "to", "parse"];
+    ///
+    /// let matches = App::new("myprog")
+    ///     // Args and options go here...
+    ///     .get_matches_from(arg_vec);
+    /// ```
+    /// [`App::get_matches`]: ./struct.App.html#method.get_matches
+    /// [`clap::Result`]: ./type.Result.html
+    /// [`Vec`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
+    pub fn get_matches_from<I, T>(mut self, itr: I) -> ArgMatches<'key>
+        where I: IntoIterator<Item = T>,
+              T: Into<OsString> + Clone
+    {
+        self.get_matches_from_safe(itr).unwrap_or_else(|e| {
+            // Otherwise, write to stderr and exit
+            if e.use_stderr() {
+                wlnerr!("{}", e.message);
+                if self.is_set(AppSettings::WaitOnError) {
+                    wlnerr!("\nPress [ENTER] / [RETURN] to continue...");
+                    let mut s = String::new();
+                    let i = io::stdin();
+                    i.lock().read_line(&mut s).unwrap();
+                }
+                drop(self);
+                drop(e);
+                process::exit(1);
+            }
+
+            drop(self);
+            e.exit()
+        })
+    }
+
     /// Starts the parsing process. This method will return a [`clap::Result`] type instead of exiting
     /// the process on failed parse. By default this method gets matches from [`env::args_os`]
     ///
@@ -1263,50 +1307,6 @@ impl<'key, 'other> App<'key, 'other> {
         self.get_matches_from_safe(&mut env::args_os())
     }
 
-    /// Starts the parsing process. Like [`App::get_matches`] this method does not return a [`clap::Result`]
-    /// and will automatically exit with an error message. This method, however, lets you specify
-    /// what iterator to use when performing matches, such as a [`Vec`] of your making.
-    ///
-    /// **NOTE:** The first argument will be parsed as the binary name unless
-    /// [`AppSettings::NoBinaryName`] is used
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use clap::{App, Arg};
-    /// let arg_vec = vec!["my_prog", "some", "args", "to", "parse"];
-    ///
-    /// let matches = App::new("myprog")
-    ///     // Args and options go here...
-    ///     .get_matches_from(arg_vec);
-    /// ```
-    /// [`App::get_matches`]: ./struct.App.html#method.get_matches
-    /// [`clap::Result`]: ./type.Result.html
-    /// [`Vec`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
-    /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
-    pub fn get_matches_from<I, T>(mut self, itr: I) -> ArgMatches<'key>
-        where I: IntoIterator<Item = T>,
-              T: Into<OsString> + Clone
-    {
-        self.get_matches_from_safe_borrow(itr).unwrap_or_else(|e| {
-            // Otherwise, write to stderr and exit
-            if e.use_stderr() {
-                wlnerr!("{}", e.message);
-                if self.is_set(AppSettings::WaitOnError) {
-                    wlnerr!("\nPress [ENTER] / [RETURN] to continue...");
-                    let mut s = String::new();
-                    let i = io::stdin();
-                    i.lock().read_line(&mut s).unwrap();
-                }
-                drop(self);
-                drop(e);
-                process::exit(1);
-            }
-
-            drop(self);
-            e.exit()
-        })
-    }
 
     /// Starts the parsing process. A combination of [`App::get_matches_from`], and
     /// [`App::get_matches_safe`]
@@ -1344,7 +1344,20 @@ impl<'key, 'other> App<'key, 'other> {
         where I: IntoIterator<Item = T>,
               T: Into<OsString> + Clone
     {
-        self.get_matches_from_safe_borrow(itr)
+        self.set_binary_name(&mut itr);
+
+        let cmd = Command::from(self);
+        let parser = Parser::for_command(cmd);
+        let mut matcher = ArgMatcher::new();
+
+        // do the real parsing
+        if let Err(e) = parser.parse(&mut matcher, &mut it.peekable()) {
+            return Err(e);
+        }
+
+        parser.propagate_values_down(&mut matcher);
+
+        Ok(matcher.into())
     }
 
     /// Starts the parsing process without consuming the [`App`] struct `self`. This is normally not
@@ -1370,50 +1383,44 @@ impl<'key, 'other> App<'key, 'other> {
     /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
     pub fn get_matches_from_safe_borrow<I, T>(&mut self, itr: I) -> ClapResult<ArgMatches<'key>>
         where I: IntoIterator<Item = T>,
-              T: Into<OsString> + Clone
+              T: Into<OsString> 
     {
-        // If there are global arguments, or settings we need to propgate them down to subcommands
-        // before parsing incase we run into a subcommand
-        self.propogate_globals();
-        self.propogate_settings();
-        self.derive_display_order();
+        self.set_binary_name(&mut itr);
 
+        let cmd = Command::from(self);
+        let parser = Parser::for_command(cmd);
         let mut matcher = ArgMatcher::new();
 
+        // do the real parsing
+        if let Err(e) = parser.parse(&mut matcher, &mut it.peekable()) {
+            return Err(e);
+        }
+
+        parser.propagate_values_down(&mut matcher);
+
+        Ok(matcher.into())
+    }
+
+    fn set_binary_name<I, T>(&mut self, itr: &mut I) -> ClapResult<ArgMatches<'key>>
+        where I: IntoIterator<Item = T>,
+              T: Into<OsString> 
+    {
         let mut it = itr.into_iter();
-        // Get the name of the program (argument 1 of env::args()) and determine the
-        // actual file
+        // Get the name of the program (argument 1 of env::args_os()) and determine the actual file
         // that was used to execute the program. This is because a program called
-        // ./target/release/my_prog -a
-        // will have two arguments, './target/release/my_prog', '-a' but we don't want
-        // to display
-        // the full path when displaying help messages and such
-        if !self.is_set(AppSettings::NoBinaryName) {
+        // ./target/release/my_prog -a will have two arguments, './target/release/my_prog', '-a'
+        // but we don't want to display the full path when displaying help messages and such
+        if !self.is_set(AppSettings::NoBinaryName) && self.meta.bin_name.is_none() {
             if let Some(name) = it.next() {
                 let bn_os = name.into();
                 let p = Path::new(&*bn_os);
                 if let Some(f) = p.file_name() {
                     if let Some(s) = f.to_os_string().to_str() {
-                        if self.meta.bin_name.is_none() {
-                            self.meta.bin_name = Some(s.to_owned());
-                        }
+                        self.meta.bin_name = Some(s.to_owned());
                     }
                 }
             }
         }
-
-        // do the real parsing
-        if let Err(e) = self.get_matches_with(&mut matcher, &mut it.peekable()) {
-            return Err(e);
-        }
-
-        if self.is_set(AppSettings::PropagateGlobalValuesDown) {
-            for a in &self.global_args {
-                matcher.propagate(a.b.name);
-            }
-        }
-
-        Ok(matcher.into())
     }
 }
 

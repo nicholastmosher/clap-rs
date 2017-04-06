@@ -1,5 +1,5 @@
 #[doc(hidden)]
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct AppMeta<'other> {
     pub name: String,
     pub bin_name: Option<String>,
@@ -8,16 +8,17 @@ pub struct AppMeta<'other> {
     pub long_version: Option<&'other str>,
     pub about: Option<&'other str>,
     pub long_about: Option<&'other str>,
-    pub more_help: Option<&'other str>,
-    pub pre_help: Option<&'other str>,
-    pub aliases: Option<Vec<(&'other str, bool)>>, // (name, visible)
-    pub usage_str: Option<&'other str>,
-    pub usage: Option<String>,
-    pub help_str: Option<&'other str>,
-    pub disp_ord: usize,
-    pub term_w: Option<usize>,
-    pub max_w: Option<usize>,
+    pub after_help: Option<&'other str>,
+    pub before_help: Option<&'other str>,
+    pub aliases: Option<Vec<&'other str>>, 
+    pub visible_aliases: Option<Vec<&'other str>>,
+    pub custom_usage: Option<&'other str>,
+    pub custom_help: Option<&'other str>,
+    pub display_order: usize,
     pub template: Option<&'other str>,
+    pub term_width: Option<usize>,
+    pub max_term_width: Option<usize>,
+    pub _usage: Option<String>,
 }
 
 impl<'other> AppMeta<'other> {

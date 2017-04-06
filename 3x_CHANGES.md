@@ -30,3 +30,5 @@
 * Add ArgSettings::MultipleValues
 * Add ArgSettings::MultipleOccurrences
 * Arg::validator_os returns String
+* App::help -> App::custom_help
+* App::usage -> App::custom_usage

@@ -11,6 +11,37 @@ use std::io::Write;
 
 // Internal
 
+pub fn gen_completions_to<W: Write>(&mut self, for_shell: Shell, buf: &mut W) {
+    if !self.is_set(AS::Propogated) {
+        self.propogate_help_version();
+        self.build_bin_names();
+        self.propogate_globals();
+        self.propogate_settings();
+        self.set(AS::Propogated);
+    }
+
+    ComplGen::new(self).generate(for_shell, buf)
+}
+
+pub fn gen_completions(&mut self, for_shell: Shell, od: OsString) {
+    use std::error::Error;
+
+    let out_dir = PathBuf::from(od);
+    let name = &*self.meta.bin_name.as_ref().unwrap().clone();
+    let file_name = match for_shell {
+        Shell::Bash => format!("{}.bash-completion", name),
+        Shell::Fish => format!("{}.fish", name),
+        Shell::Zsh => format!("_{}", name),
+        Shell::PowerShell => format!("_{}.ps1", name),
+    };
+
+    let mut file = match File::create(out_dir.join(file_name)) {
+        Err(why) => panic!("couldn't create completion file: {}", why.description()),
+        Ok(file) => file,
+    };
+    self.gen_completions_to(for_shell, &mut file)
+}
+
 pub struct ComplGen<'key, 'b>
     where 'key: 'b
 {
